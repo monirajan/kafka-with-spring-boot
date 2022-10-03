@@ -18,6 +18,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest
@@ -33,7 +34,7 @@ class LibraryEventsControllerTest {
     ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    void postLibraryEvent() throws Exception {
+    void checkWhetherLibraryEventIsPostedSuccessfully() throws Exception {
         String requestBody = objectMapper.writeValueAsString(buildLibraryEvent());
 
         doNothing().when(libraryEventProducer).sendLibraryEventAnotherApproach(isA(LibraryEvent.class));
@@ -43,6 +44,29 @@ class LibraryEventsControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isCreated());
         verify(libraryEventProducer, times(1)).sendLibraryEventAnotherApproach(any());
+    }
+
+    @Test
+    void checkWhetherExceptionIsThrownForNullValues() throws Exception {
+
+        String requestBody = objectMapper.writeValueAsString(buildLibraryEventWithNullValues());
+
+        mockMvc.perform(post("/v1/libraryevent")
+                        .content(requestBody)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().is4xxClientError())
+                .andExpect(content().string("book.bookAuthor-must not be blank,book.bookName-must not be blank"));
+    }
+
+    private LibraryEvent buildLibraryEventWithNullValues() {
+        Book book = Book.builder().bookId(123)
+                .bookAuthor(null)
+                .bookName(null)
+                .build();
+        LibraryEvent libraryEvent = LibraryEvent.builder()
+                .libraryEventId(null)
+                .book(book).build();
+        return libraryEvent;
     }
 
     private LibraryEvent buildLibraryEvent() {
